@@ -49,6 +49,12 @@ export function AppSidebar() {
         </SidebarMenuButton>
       </SidebarMenu>
 
+      <SidebarMenu>
+        <SidebarMenuButton asChild className={itemBaseClass} isActive={pathname === "/settings"}>
+          <Link href="/settings">Einstellungen</Link>
+        </SidebarMenuButton>
+      </SidebarMenu>
+
       <SidebarFooter className="mt-auto border-t pt-4 pb-2 px-4">
         {session?.user && (
           <div className="mb-3">

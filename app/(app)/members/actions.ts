@@ -81,6 +81,21 @@ export async function updateMember(
   revalidatePath("/members");
 }
 
+export async function resetMemberPassword(memberId: number): Promise<{ tempPassword: string }> {
+  await requireAdmin();
+  const member = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: { userId: true },
+  });
+  if (!member?.userId)
+    throw new Error("Dieses Mitglied hat keinen Login-Account.");
+
+  const tempPassword = randomBytes(5).toString("hex");
+  const hashed = await bcrypt.hash(tempPassword, 12);
+  await prisma.user.update({ where: { id: member.userId }, data: { password: hashed } });
+  return { tempPassword };
+}
+
 export async function deleteMember(id: number) {
   await requireAdmin();
   const member = await prisma.member.findUnique({ where: { id }, select: { userId: true } });

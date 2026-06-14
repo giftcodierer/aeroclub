@@ -165,7 +165,23 @@ export default async function FlightsPage() {
 
       {/* Flugbuch */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Flugbuch</h2>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold">Flugbuch</h2>
+          {isAdmin && completedFlights.length > 0 && (
+            <a
+              href="/api/export/flights"
+              download
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              CSV exportieren
+            </a>
+          )}
+        </div>
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
             <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
