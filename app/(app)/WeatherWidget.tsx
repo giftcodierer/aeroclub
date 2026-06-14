@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ICAO_ICAO_STORAGE_KEY } from "@/lib/constants";
 
 type MetarData = {
   icaoId: string;
@@ -33,7 +34,6 @@ type WeatherResult =
   | { source: "weather-model"; data: ModelData }
   | null;
 
-const STORAGE_KEY = "aeroclub_icao";
 
 export function WeatherWidget() {
   const [icao, setIcao] = useState("");
@@ -43,7 +43,7 @@ export function WeatherWidget() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY) ?? "EDER";
+    const saved = localStorage.getItem(ICAO_STORAGE_KEY) ?? "EDER";
     setIcao(saved);
     setInput(saved);
   }, []);
@@ -78,7 +78,7 @@ export function WeatherWidget() {
       setError("Bitte einen gültigen 4-stelligen ICAO-Code eingeben (z. B. EDER).");
       return;
     }
-    localStorage.setItem(STORAGE_KEY, code);
+    localStorage.setItem(ICAO_STORAGE_KEY, code);
     setIcao(code);
   }
 

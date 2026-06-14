@@ -5,14 +5,51 @@ import { fullAuth } from "@/auth";
 function StatusBadge({ status }: { status: "AKTIV" | "INAKTIV" | null }) {
   const isActive = status === "AKTIV";
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-        isActive
-          ? "bg-emerald-100 text-emerald-700 ring-emerald-200"
-          : "bg-slate-100 text-slate-600 ring-slate-200"
-      }`}
-    >
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+      isActive
+        ? "bg-emerald-100 text-emerald-700 ring-emerald-200"
+        : "bg-slate-100 text-slate-600 ring-slate-200"
+    }`}>
       {isActive ? "Aktiv" : "Inaktiv"}
+    </span>
+  );
+}
+
+function LicenseBadge({ hasLicense, expiry }: { hasLicense: boolean; expiry: Date | null }) {
+  if (!hasLicense) {
+    return (
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-600 ring-slate-200">
+        Keine Lizenz
+      </span>
+    );
+  }
+
+  if (!expiry) {
+    return (
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-100 text-emerald-700 ring-emerald-200">
+        Lizenz
+      </span>
+    );
+  }
+
+  const now = new Date();
+  const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const expired = daysLeft < 0;
+  const expiringSoon = daysLeft >= 0 && daysLeft <= 90;
+
+  const cls = expired
+    ? "bg-red-100 text-red-700 ring-red-200"
+    : expiringSoon
+    ? "bg-amber-100 text-amber-700 ring-amber-200"
+    : "bg-emerald-100 text-emerald-700 ring-emerald-200";
+
+  const label = expired
+    ? `Abgelaufen ${expiry.toLocaleDateString("de-DE")}`
+    : `bis ${expiry.toLocaleDateString("de-DE")}`;
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -35,13 +72,12 @@ export default async function MembersPage() {
               Übersicht aller Mitglieder.
             </p>
           </div>
-
           {isAdmin && <MemberForm />}
         </div>
 
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] border-collapse text-left">
+            <table className="w-full min-w-[960px] border-collapse text-left">
               <thead className="bg-slate-50">
                 <tr className="text-sm text-slate-600">
                   <th className="px-5 py-3 font-semibold">Name</th>
@@ -55,16 +91,11 @@ export default async function MembersPage() {
               </thead>
               <tbody>
                 {members.map((m) => (
-                  <tr
-                    key={m.id}
-                    className="border-t text-sm transition-colors hover:bg-slate-50/80"
-                  >
+                  <tr key={m.id} className="border-t text-sm transition-colors hover:bg-slate-50/80">
                     <td className="px-5 py-4 font-medium text-slate-900">
                       {m.firstName} {m.lastName}
                     </td>
-                    <td className="px-5 py-4 text-slate-700">
-                      {m.email ?? "—"}
-                    </td>
+                    <td className="px-5 py-4 text-slate-700">{m.email ?? "—"}</td>
                     <td className="px-5 py-4">
                       <StatusBadge status={m.status ?? null} />
                     </td>
@@ -72,15 +103,7 @@ export default async function MembersPage() {
                       {new Date(m.birthDate).toLocaleDateString("de-DE")}
                     </td>
                     <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
-                          m.hasLicense
-                            ? "bg-emerald-100 text-emerald-700 ring-emerald-200"
-                            : "bg-slate-100 text-slate-600 ring-slate-200"
-                        }`}
-                      >
-                        {m.hasLicense ? "Lizenz" : "Keine Lizenz"}
-                      </span>
+                      <LicenseBadge hasLicense={m.hasLicense} expiry={m.licenseExpiry} />
                     </td>
                     <td className="px-5 py-4 text-slate-700">
                       {new Date(m.createdAt).toLocaleDateString("de-DE")}
@@ -95,6 +118,7 @@ export default async function MembersPage() {
                             email: m.email ?? "",
                             birthDate: m.birthDate.toISOString().split("T")[0],
                             hasLicense: m.hasLicense,
+                            licenseExpiry: m.licenseExpiry?.toISOString().split("T")[0] ?? "",
                             status: m.status ?? "AKTIV",
                             createdAt: m.createdAt.toISOString().split("T")[0],
                           }}

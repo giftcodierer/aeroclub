@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NewFlightButton, LiveTimer, EndFlightButton, StartFlightButton, RevertFlightButton, EditFlightButton, DeleteFlightButton } from "../FlightComponents";
 import { fullAuth } from "@/auth";
+import Link from "next/link";
+import { LAUNCH_ICON, PILOT_FUNCTION_LABEL } from "@/lib/flight-utils";
+
+const PAGE_SIZE = 25;
 
 function duration(start: Date, end: Date) {
   const diff = Math.floor((end.getTime() - start.getTime()) / 1000);
@@ -9,17 +13,6 @@ function duration(start: Date, end: Date) {
   const s = (diff % 60).toString().padStart(2, "0");
   return `${h}:${m}:${s}`;
 }
-
-const launchIcon: Record<string, string> = { Winde: "🪁", Schlepper: "🛩️", Eigenstart: "🔋" };
-const pilotFunctionLabel: Record<string, string> = {
-  PIC_SOLO: "PIC Allein",
-  PIC_WITH_COPILOT: "PIC m. Begl.",
-  DUAL_STUDENT: "Doppels. Schüler",
-  DUAL_INSTRUCTOR: "Doppels. Lehrer",
-  SOLO_STUDENT: "Alleinflug Schüler",
-};
-
-
 
 function TableHeaders({ extra }: { extra?: React.ReactNode }) {
   return (
@@ -35,27 +28,97 @@ function TableHeaders({ extra }: { extra?: React.ReactNode }) {
   );
 }
 
-export default async function FlightsPage() {
+function Pagination({ page, totalPages }: { page: number; totalPages: number }) {
+  if (totalPages <= 1) return null;
+
+  const pages: (number | "…")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push("…");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  const btnBase = "inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition";
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-4">
+      <p className="text-xs text-muted-foreground">Seite {page} von {totalPages}</p>
+      <div className="flex items-center gap-1">
+        {page > 1 ? (
+          <Link href={`/flights?page=${page - 1}`} className={`${btnBase} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`}>
+            ←
+          </Link>
+        ) : (
+          <span className={`${btnBase} border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed`}>←</span>
+        )}
+
+        {pages.map((p, i) =>
+          p === "…" ? (
+            <span key={`ellipsis-${i}`} className="px-1 text-slate-400 text-sm">…</span>
+          ) : (
+            <Link
+              key={p}
+              href={`/flights?page=${p}`}
+              className={`${btnBase} ${p === page ? "bg-sky-600 text-white border border-sky-600" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
+            >
+              {p}
+            </Link>
+          )
+        )}
+
+        {page < totalPages ? (
+          <Link href={`/flights?page=${page + 1}`} className={`${btnBase} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`}>
+            →
+          </Link>
+        ) : (
+          <span className={`${btnBase} border border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed`}>→</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default async function FlightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1);
+
   const session = await fullAuth();
   const role = session?.user?.role;
   const canFly = role === "ADMIN" || role === "DISPATCHER";
   const isAdmin = role === "ADMIN";
 
-  const [members, aircrafts, flights] = await Promise.all([
+  const [members, aircrafts, flights, totalCompleted] = await Promise.all([
     prisma.member.findMany({ orderBy: { firstName: "asc" }, select: { id: true, firstName: true, lastName: true, hasLicense: true } }),
     prisma.aircraft.findMany({ orderBy: { model: "asc" } }),
     prisma.flight.findMany({
+      where: { status: { in: ["QUEUED", "ACTIVE"] } },
       orderBy: { createdAt: "desc" },
       include: { member: true, aircraft: true, instructor: true },
-      take: 200,
     }),
+    prisma.flight.count({ where: { status: "COMPLETED" } }),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCompleted / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  const completedFlights = await prisma.flight.findMany({
+    where: { status: "COMPLETED" },
+    include: { member: true, aircraft: true, instructor: true },
+    orderBy: { startTime: "desc" },
+    skip: (safePage - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
 
   const queuedFlights = flights.filter((f) => f.status === "QUEUED");
   const activeFlights = flights.filter((f) => f.status === "ACTIVE");
-  const completedFlights = flights.filter((f) => f.status === "COMPLETED").sort((a, b) =>
-    (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0)
-  );
 
   const busyMemberIds = new Set([...queuedFlights, ...activeFlights].map((f) => f.memberId));
   const busyAircraftIds = new Set([...queuedFlights, ...activeFlights].map((f) => f.aircraftId));
@@ -90,9 +153,9 @@ export default async function FlightsPage() {
                         {f.member.firstName} {f.member.lastName}
                         {f.instructor && <div className="text-xs text-slate-500 font-normal">Lehrer: {f.instructor.firstName} {f.instructor.lastName}</div>}
                       </td>
-                      <td className="px-3 py-2 text-slate-700 text-xs">{pilotFunctionLabel[f.pilotFunction ?? ""] ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-700 text-xs">{PILOT_FUNCTION_LABEL[f.pilotFunction ?? ""] ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-700">{f.aircraft.model} <span className="font-mono text-xs text-muted-foreground">{f.aircraft.registration}</span></td>
-                      <td className="px-3 py-2 text-slate-700">{launchIcon[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-700">{LAUNCH_ICON[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-700">{f.departureLocation ?? "—"}</td>
                       <td className="px-3 py-2">
                         {canFly && (
@@ -136,9 +199,9 @@ export default async function FlightsPage() {
                         {f.member.firstName} {f.member.lastName}
                         {f.instructor && <div className="text-xs text-slate-500 font-normal">Lehrer: {f.instructor.firstName} {f.instructor.lastName}</div>}
                       </td>
-                      <td className="px-3 py-2 text-slate-700 text-xs">{pilotFunctionLabel[f.pilotFunction ?? ""] ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-700 text-xs">{PILOT_FUNCTION_LABEL[f.pilotFunction ?? ""] ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-700">{f.aircraft.model} <span className="font-mono text-xs text-muted-foreground">{f.aircraft.registration}</span></td>
-                      <td className="px-3 py-2 text-slate-700">{launchIcon[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-700">{LAUNCH_ICON[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-700">{f.departureLocation ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-700">{f.startTime?.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) ?? "—"}</td>
                       <td className="px-3 py-2">{f.startTime && <LiveTimer startTime={f.startTime.toISOString()} />}</td>
@@ -166,8 +229,11 @@ export default async function FlightsPage() {
       {/* Flugbuch */}
       <div>
         <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold">Flugbuch</h2>
-          {isAdmin && completedFlights.length > 0 && (
+          <h2 className="text-lg font-semibold">
+            Flugbuch
+            <span className="ml-2 text-sm font-normal text-muted-foreground">({totalCompleted} Einträge)</span>
+          </h2>
+          {isAdmin && totalCompleted > 0 && (
             <a
               href="/api/export/flights"
               download
@@ -183,7 +249,7 @@ export default async function FlightsPage() {
           )}
         </div>
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-          <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr className="text-slate-600">
@@ -209,9 +275,9 @@ export default async function FlightsPage() {
                       {f.member.firstName} {f.member.lastName}
                       {f.instructor && <div className="text-xs text-slate-500 font-normal">Lehrer: {f.instructor.firstName} {f.instructor.lastName}</div>}
                     </td>
-                    <td className="px-3 py-2 text-slate-700 text-xs">{pilotFunctionLabel[f.pilotFunction ?? ""] ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-700 text-xs">{PILOT_FUNCTION_LABEL[f.pilotFunction ?? ""] ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-700">{f.aircraft.model} <span className="font-mono text-xs text-muted-foreground">{f.aircraft.registration}</span></td>
-                    <td className="px-3 py-2 text-slate-700">{launchIcon[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-700">{LAUNCH_ICON[f.launchType ?? ""] ?? ""} {f.launchType ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-700">{f.departureLocation ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-700">{f.arrivalLocation ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-700">{f.startTime?.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) ?? "—"}</td>
@@ -242,6 +308,7 @@ export default async function FlightsPage() {
             </table>
           </div>
         </div>
+        <Pagination page={safePage} totalPages={totalPages} />
       </div>
     </section>
   );

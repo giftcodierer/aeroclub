@@ -3,9 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireDispatcherOrAdmin, requireAdmin } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
-
-const allowsUnlicensed = (pf: string) => pf === "DUAL_STUDENT" || pf === "SOLO_STUDENT";
-const requiresInstructor = (pf: string) => pf === "DUAL_STUDENT" || pf === "DUAL_INSTRUCTOR";
+import { allowsUnlicensed, requiresInstructor } from "@/lib/flight-utils";
 
 async function checkLicense(pilotFunction: string, memberId: number) {
   if (!allowsUnlicensed(pilotFunction)) {

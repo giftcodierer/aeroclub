@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { changePassword } from "@/app/(app)/actions/account";
-
-const ICAO_KEY = "aeroclub_icao";
+import { ICAO_STORAGE_KEY } from "@/lib/constants";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -116,14 +115,14 @@ export function AirportForm() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setIcao(localStorage.getItem(ICAO_KEY) ?? "");
+    setIcao(localStorage.getItem(ICAO_STORAGE_KEY) ?? "");
   }, []);
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
     const val = icao.trim().toUpperCase();
     if (!/^[A-Z]{4}$/.test(val)) return;
-    localStorage.setItem(ICAO_KEY, val);
+    localStorage.setItem(ICAO_STORAGE_KEY, val);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

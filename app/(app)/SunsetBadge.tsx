@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const STORAGE_KEY = "aeroclub_icao";
+import { ICAO_STORAGE_KEY } from "@/lib/constants";
 
 export function SunsetBadge() {
   const [time, setTime] = useState<string | null>(null);
 
   useEffect(() => {
-    const icao = localStorage.getItem(STORAGE_KEY) ?? "EDER";
+    const icao = localStorage.getItem(ICAO_STORAGE_KEY) ?? "EDER";
     fetch(`/api/sunset?icao=${icao}`)
       .then((r) => r.json())
       .then((d) => { if (d.sunset) setTime(d.sunset); })

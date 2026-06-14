@@ -5,20 +5,10 @@ import { useConfirm } from "@/components/ConfirmProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { queueFlight, activateFlight, revertFlight, endFlight, updateFlight, deleteFlight } from "@/app/(app)/actions/flights";
+import { PILOT_FUNCTIONS, LAUNCH_TYPES, LAUNCH_ICON, allowsUnlicensed, requiresInstructor } from "@/lib/flight-utils";
 
 type Member = { id: number; firstName: string; lastName: string; hasLicense: boolean };
 type Aircraft = { id: number; model: string; registration: string };
-
-const PILOT_FUNCTIONS = [
-  { value: "PIC_SOLO", label: "PIC – Alleinflug" },
-  { value: "PIC_WITH_COPILOT", label: "PIC – mit Begleitung" },
-  { value: "DUAL_STUDENT", label: "Doppelsitzer – Schüler" },
-  { value: "DUAL_INSTRUCTOR", label: "Doppelsitzer – Fluglehrer" },
-  { value: "SOLO_STUDENT", label: "Alleinflug – Schüler (Solo)" },
-];
-
-const allowsUnlicensed = (pf: string) => pf === "DUAL_STUDENT" || pf === "SOLO_STUDENT";
-const requiresInstructor = (pf: string) => pf === "DUAL_STUDENT" || pf === "DUAL_INSTRUCTOR";
 
 // ── Neuer Flug Dialog (→ QUEUED) ───────────────────────────────────────────────
 
@@ -132,9 +122,9 @@ export function NewFlightButton({ members, aircrafts }: { members: Member[]; air
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Startart</label>
                 <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={launchType} onChange={(e) => setLaunchType(e.target.value)}>
-                  <option value="Winde">🪁 Winde</option>
-                  <option value="Schlepper">🛩️ Schlepper</option>
-                  <option value="Eigenstart">🔋 Eigenstart</option>
+                  {LAUNCH_TYPES.map((lt) => (
+                    <option key={lt} value={lt}>{LAUNCH_ICON[lt]} {lt}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -381,9 +371,9 @@ export function EditFlightButton({ flight, members, aircrafts }: { flight: Fligh
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">Startart</label>
                 <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={launchType} onChange={(e) => setLaunchType(e.target.value)}>
-                  <option value="Winde">🪁 Winde</option>
-                  <option value="Schlepper">🛩️ Schlepper</option>
-                  <option value="Eigenstart">🔋 Eigenstart</option>
+                  {LAUNCH_TYPES.map((lt) => (
+                    <option key={lt} value={lt}>{LAUNCH_ICON[lt]} {lt}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">

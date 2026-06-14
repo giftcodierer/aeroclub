@@ -17,13 +17,30 @@ function TypeBadge({ isTwoSeater, isMotorized }: { isTwoSeater: boolean; isMotor
   );
 }
 
+function formatHours(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 export default async function AirplanesPage() {
   const session = await fullAuth();
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const aircrafts = await prisma.aircraft.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const [aircrafts, flightMinutes] = await Promise.all([
+    prisma.aircraft.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.flight.findMany({
+      where: { status: "COMPLETED", startTime: { not: null }, endTime: { not: null } },
+      select: { aircraftId: true, startTime: true, endTime: true },
+    }),
+  ]);
+
+  const loggedMinutesByAircraft = new Map<number, number>();
+  for (const f of flightMinutes) {
+    if (!f.startTime || !f.endTime) continue;
+    const mins = (f.endTime.getTime() - f.startTime.getTime()) / 60000;
+    loggedMinutesByAircraft.set(f.aircraftId, (loggedMinutesByAircraft.get(f.aircraftId) ?? 0) + mins);
+  }
 
   return (
     <section className="py-6 md:py-8">
@@ -40,48 +57,66 @@ export default async function AirplanesPage() {
 
         <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left">
+            <table className="w-full min-w-[860px] border-collapse text-left">
               <thead className="bg-slate-50">
                 <tr className="text-sm text-slate-600">
                   <th className="px-5 py-3 font-semibold">Typ</th>
                   <th className="px-5 py-3 font-semibold">Kennzeichen</th>
                   <th className="px-5 py-3 font-semibold">Baujahr</th>
                   <th className="px-5 py-3 font-semibold">Kategorie</th>
+                  <th className="px-5 py-3 font-semibold">Betriebsstunden</th>
                   <th className="px-5 py-3 font-semibold">Hinzugefügt</th>
                   <th className="px-5 py-3 font-semibold"></th>
                 </tr>
               </thead>
               <tbody>
-                {aircrafts.map((a) => (
-                  <tr key={a.id} className="border-t text-sm transition-colors hover:bg-slate-50/80">
-                    <td className="px-5 py-4 font-medium text-slate-900">{a.model}</td>
-                    <td className="px-5 py-4 text-slate-700 font-mono">{a.registration}</td>
-                    <td className="px-5 py-4 text-slate-700">{a.yearBuilt ?? "—"}</td>
-                    <td className="px-5 py-4">
-                      <TypeBadge isTwoSeater={a.isTwoSeater} isMotorized={a.isMotorized} />
-                    </td>
-                    <td className="px-5 py-4 text-slate-700">
-                      {new Date(a.createdAt).toLocaleDateString("de-DE")}
-                    </td>
-                    <td className="px-5 py-4">
-                      {isAdmin && (
-                        <EditAirplaneButton
-                          aircraft={{
-                            id: a.id,
-                            model: a.model,
-                            registration: a.registration,
-                            yearBuilt: a.yearBuilt?.toString() ?? "",
-                            isTwoSeater: a.isTwoSeater,
-                            isMotorized: a.isMotorized,
-                          }}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {aircrafts.map((a) => {
+                  const loggedMins = loggedMinutesByAircraft.get(a.id) ?? 0;
+                  const totalHours = a.initialHours + loggedMins / 60;
+                  const loggedHours = loggedMins / 60;
+
+                  return (
+                    <tr key={a.id} className="border-t text-sm transition-colors hover:bg-slate-50/80">
+                      <td className="px-5 py-4 font-medium text-slate-900">{a.model}</td>
+                      <td className="px-5 py-4 text-slate-700 font-mono">{a.registration}</td>
+                      <td className="px-5 py-4 text-slate-700">{a.yearBuilt ?? "—"}</td>
+                      <td className="px-5 py-4">
+                        <TypeBadge isTwoSeater={a.isTwoSeater} isMotorized={a.isMotorized} />
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="font-semibold text-slate-900">
+                          {totalHours.toFixed(1)} h
+                        </span>
+                        {loggedHours > 0 && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({formatHours(loggedMins)} erfasst)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-slate-700">
+                        {new Date(a.createdAt).toLocaleDateString("de-DE")}
+                      </td>
+                      <td className="px-5 py-4">
+                        {isAdmin && (
+                          <EditAirplaneButton
+                            aircraft={{
+                              id: a.id,
+                              model: a.model,
+                              registration: a.registration,
+                              yearBuilt: a.yearBuilt?.toString() ?? "",
+                              isTwoSeater: a.isTwoSeater,
+                              isMotorized: a.isMotorized,
+                              initialHours: a.initialHours.toString(),
+                            }}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {aircrafts.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
                       Noch keine Flugzeuge vorhanden.
                     </td>
                   </tr>
