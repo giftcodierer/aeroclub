@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Flight" ADD COLUMN     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+ALTER COLUMN "startTime" DROP NOT NULL;
