@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ICAO_ICAO_STORAGE_KEY } from "@/lib/constants";
+import { ICAO_STORAGE_KEY } from "@/lib/constants";
 
 type MetarData = {
   icaoId: string;
