@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createMember, updateMember, deleteMember } from "./actions";
+import { createMember, updateMember, deleteMember, resetMemberPassword } from "./actions";
 
 const defaultForm = {
   firstName: "",
@@ -24,12 +25,14 @@ function MemberModal({
   setForm,
   onSubmit,
   onClose,
+  footerExtra,
 }: {
   title: string;
   form: MemberFormData;
   setForm: (fn: (p: MemberFormData) => MemberFormData) => void;
   onSubmit: () => void;
   onClose: () => void;
+  footerExtra?: ReactNode;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -65,9 +68,12 @@ function MemberModal({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={onSubmit}>Speichern</Button>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <div>{footerExtra}</div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Abbrechen</Button>
+            <Button onClick={onSubmit}>Speichern</Button>
+          </div>
         </div>
       </div>
     </div>
@@ -142,6 +148,7 @@ export default function MemberForm() {
 }
 
 export function EditMemberButton({ member }: { member: MemberWithId }) {
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<MemberFormData>({
     firstName: member.firstName,
@@ -152,6 +159,8 @@ export function EditMemberButton({ member }: { member: MemberWithId }) {
     status: member.status,
     createdAt: member.createdAt,
   });
+  const [resetInfo, setResetInfo] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleSubmit() {
     await updateMember(member.id, form);
@@ -159,8 +168,35 @@ export function EditMemberButton({ member }: { member: MemberWithId }) {
   }
 
   async function handleDelete() {
-    if (confirm(`${member.firstName} ${member.lastName} wirklich löschen?`)) {
-      await deleteMember(member.id);
+    const ok = await confirm({
+      title: "Mitglied löschen?",
+      message: `${member.firstName} ${member.lastName} wird dauerhaft entfernt. Der zugehörige Login-Account wird ebenfalls gelöscht.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (ok) await deleteMember(member.id);
+  }
+
+  async function handleResetPassword() {
+    const ok = await confirm({
+      title: "Passwort zurücksetzen?",
+      message: `Das Passwort von ${member.firstName} ${member.lastName} wird durch ein neues temporäres Passwort ersetzt.`,
+      confirmLabel: "Zurücksetzen",
+    });
+    if (!ok) return;
+    setResetLoading(true);
+    try {
+      const { tempPassword } = await resetMemberPassword(member.id);
+      setResetInfo({
+        name: `${member.firstName} ${member.lastName}`,
+        email: member.email,
+        password: tempPassword,
+      });
+      setOpen(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Fehler beim Zurücksetzen");
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -194,7 +230,48 @@ export function EditMemberButton({ member }: { member: MemberWithId }) {
           setForm={setForm}
           onSubmit={handleSubmit}
           onClose={() => setOpen(false)}
+          footerExtra={
+            member.email ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="text-amber-700 border-amber-300 hover:bg-amber-50"
+              >
+                {resetLoading ? "Zurücksetzen…" : "Passwort zurücksetzen"}
+              </Button>
+            ) : undefined
+          }
         />
+      )}
+
+      {resetInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl border bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xl">🔑</span>
+              <div>
+                <h2 className="font-bold text-slate-900">Passwort zurückgesetzt</h2>
+                <p className="text-sm text-muted-foreground">Login-Daten bitte notieren!</p>
+              </div>
+            </div>
+            <div className="rounded-xl border bg-slate-50 p-4 font-mono text-sm space-y-2">
+              <div><span className="text-muted-foreground">Name:</span> {resetInfo.name}</div>
+              <div><span className="text-muted-foreground">E-Mail:</span> {resetInfo.email}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Passwort:</span>
+                <span className="font-bold text-sky-700 tracking-widest">{resetInfo.password}</span>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              ⚠️ Dieses Passwort wird nur einmal angezeigt.
+            </p>
+            <Button className="mt-4 w-full" onClick={() => setResetInfo(null)}>
+              Verstanden
+            </Button>
+          </div>
+        </div>
       )}
     </>
   );

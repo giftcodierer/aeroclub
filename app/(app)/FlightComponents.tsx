@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { queueFlight, activateFlight, revertFlight, endFlight, updateFlight, deleteFlight } from "@/app/(app)/actions/flights";
@@ -193,9 +193,15 @@ export function StartFlightButton({ id }: { id: number }) {
 // ── Rückgängig Button (ACTIVE → QUEUED) ───────────────────────────────────────
 
 export function RevertFlightButton({ id }: { id: number }) {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
   async function handle() {
-    if (!confirm("Start rückgängig machen? Der Flug kommt zurück in die Warteschlange.")) return;
+    const ok = await confirm({
+      title: "Start rückgängig machen?",
+      message: "Der Flug kommt zurück in die Warteschlange.",
+      confirmLabel: "Rückgängig",
+    });
+    if (!ok) return;
     setLoading(true);
     await revertFlight(id);
   }
@@ -226,8 +232,15 @@ export function LiveTimer({ startTime }: { startTime: string }) {
 // ── Landen Button ──────────────────────────────────────────────────────────────
 
 export function EndFlightButton({ id }: { id: number }) {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
   async function handle() {
+    const ok = await confirm({
+      title: "Flug landen?",
+      message: "Der Flug wird jetzt als gelandet markiert. Die aktuelle Uhrzeit wird als Landezeit gespeichert.",
+      confirmLabel: "Landen",
+    });
+    if (!ok) return;
     setLoading(true);
     await endFlight(id);
   }
@@ -417,9 +430,16 @@ export function EditFlightButton({ flight, members, aircrafts }: { flight: Fligh
 // ── Löschen Button ─────────────────────────────────────────────────────────────
 
 export function DeleteFlightButton({ id }: { id: number }) {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
   async function handle() {
-    if (!confirm("Flug wirklich löschen?")) return;
+    const ok = await confirm({
+      title: "Flug löschen?",
+      message: "Dieser Eintrag wird dauerhaft aus dem Flugbuch entfernt.",
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     setLoading(true);
     await deleteFlight(id);
   }
