@@ -47,8 +47,9 @@ model Member {
   email       String?       @unique
   status      MemberStatus? @default(AKTIV)
   birthDate   DateTime
-  hasLicense  Boolean       @default(false)
-  createdAt   DateTime      @default(now())
+  hasLicense    Boolean       @default(false)
+  licenseExpiry DateTime?
+  createdAt     DateTime      @default(now())
 
   userId      Int?          @unique
   user        User?         @relation(fields: [userId], references: [id])
@@ -71,6 +72,7 @@ model Aircraft {
   yearBuilt     Int?
   isTwoSeater   Boolean   @default(false)
   isMotorized   Boolean   @default(false)
+  initialHours  Float     @default(0)
   createdAt     DateTime  @default(now())
 
   flights       Flight[]

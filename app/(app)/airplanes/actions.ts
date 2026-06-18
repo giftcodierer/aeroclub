@@ -10,6 +10,7 @@ export async function createAirplane(form: {
   yearBuilt: string;
   isTwoSeater: boolean;
   isMotorized: boolean;
+  initialHours: string;
 }) {
   await requireAdmin();
   await prisma.aircraft.create({
@@ -19,9 +20,9 @@ export async function createAirplane(form: {
       yearBuilt: form.yearBuilt ? parseInt(form.yearBuilt) : null,
       isTwoSeater: form.isTwoSeater,
       isMotorized: form.isMotorized,
+      initialHours: form.initialHours ? parseFloat(form.initialHours) : 0,
     },
   });
-
   revalidatePath("/airplanes");
 }
 
@@ -33,6 +34,7 @@ export async function updateAirplane(
     yearBuilt: string;
     isTwoSeater: boolean;
     isMotorized: boolean;
+    initialHours: string;
   }
 ) {
   await requireAdmin();
@@ -44,9 +46,9 @@ export async function updateAirplane(
       yearBuilt: form.yearBuilt ? parseInt(form.yearBuilt) : null,
       isTwoSeater: form.isTwoSeater,
       isMotorized: form.isMotorized,
+      initialHours: form.initialHours ? parseFloat(form.initialHours) : 0,
     },
   });
-
   revalidatePath("/airplanes");
 }
 

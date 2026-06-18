@@ -12,6 +12,7 @@ const defaultForm = {
   email: "",
   birthDate: "",
   hasLicense: false,
+  licenseExpiry: "",
   status: "AKTIV" as "AKTIV" | "INAKTIV",
   createdAt: "",
 };
@@ -62,9 +63,27 @@ function MemberModal({
               <option value="INAKTIV">Inaktiv</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 pt-5">
-            <input id="hasLicense" type="checkbox" checked={form.hasLicense} onChange={(e) => setForm((p) => ({ ...p, hasLicense: e.target.checked }))} className="h-4 w-4 rounded border-slate-300" />
-            <label htmlFor="hasLicense" className="text-sm">Lizenz vorhanden</label>
+          <div className="sm:col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                id="hasLicense"
+                type="checkbox"
+                checked={form.hasLicense}
+                onChange={(e) => setForm((p) => ({ ...p, hasLicense: e.target.checked, licenseExpiry: e.target.checked ? p.licenseExpiry : "" }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <label htmlFor="hasLicense" className="text-sm">Lizenz vorhanden</label>
+            </div>
+            {form.hasLicense && (
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Lizenz gültig bis</label>
+                <Input
+                  type="date"
+                  value={form.licenseExpiry}
+                  onChange={(e) => setForm((p) => ({ ...p, licenseExpiry: e.target.value }))}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -156,6 +175,7 @@ export function EditMemberButton({ member }: { member: MemberWithId }) {
     email: member.email,
     birthDate: member.birthDate,
     hasLicense: member.hasLicense,
+    licenseExpiry: member.licenseExpiry,
     status: member.status,
     createdAt: member.createdAt,
   });

@@ -12,6 +12,7 @@ export async function createMember(form: {
   email: string;
   birthDate: string;
   hasLicense: boolean;
+  licenseExpiry: string;
   status: "AKTIV" | "INAKTIV";
   createdAt: string;
 }): Promise<{ tempPassword: string | null }> {
@@ -43,6 +44,7 @@ export async function createMember(form: {
       status: form.status,
       birthDate: new Date(form.birthDate),
       hasLicense: form.hasLicense,
+      licenseExpiry: form.licenseExpiry ? new Date(form.licenseExpiry) : null,
       createdAt: form.createdAt ? new Date(form.createdAt) : new Date(),
       userId: userId ?? undefined,
     },
@@ -60,6 +62,7 @@ export async function updateMember(
     email: string;
     birthDate: string;
     hasLicense: boolean;
+    licenseExpiry: string;
     status: "AKTIV" | "INAKTIV";
     createdAt: string;
   }
@@ -74,6 +77,7 @@ export async function updateMember(
       status: form.status,
       birthDate: new Date(form.birthDate),
       hasLicense: form.hasLicense,
+      licenseExpiry: form.licenseExpiry ? new Date(form.licenseExpiry) : null,
       createdAt: form.createdAt ? new Date(form.createdAt) : undefined,
     },
   });

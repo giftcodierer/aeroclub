@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { createAirplane, updateAirplane, deleteAirplane } from "./actions";
 
 const defaultForm = {
@@ -11,6 +12,7 @@ const defaultForm = {
   yearBuilt: "",
   isTwoSeater: false,
   isMotorized: false,
+  initialHours: "",
 };
 
 type AirplaneFormData = typeof defaultForm;
@@ -52,31 +54,51 @@ function AirplaneModal({
             value={form.yearBuilt}
             onChange={(e) => setForm((p) => ({ ...p, yearBuilt: e.target.value }))}
           />
-          <div className="flex items-center gap-2">
-            <input
-              id="isTwoSeater"
-              type="checkbox"
-              checked={form.isTwoSeater}
-              onChange={(e) => setForm((p) => ({ ...p, isTwoSeater: e.target.checked }))}
-              className="h-4 w-4 rounded border-slate-300"
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">
+              Betriebsstunden (aktuell)
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              placeholder="z. B. 1250.5"
+              value={form.initialHours}
+              onChange={(e) => setForm((p) => ({ ...p, initialHours: e.target.value }))}
             />
-            <label htmlFor="isTwoSeater" className="text-sm">Doppelsitzer</label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Stand vor der ersten Erfassung in diesem System
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="isMotorized"
-              type="checkbox"
-              checked={form.isMotorized}
-              onChange={(e) => setForm((p) => ({ ...p, isMotorized: e.target.checked }))}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            <label htmlFor="isMotorized" className="text-sm">Motorisiert</label>
+          <div className="flex flex-col gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <input
+                id="isTwoSeater"
+                type="checkbox"
+                checked={form.isTwoSeater}
+                onChange={(e) => setForm((p) => ({ ...p, isTwoSeater: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <label htmlFor="isTwoSeater" className="text-sm">Doppelsitzer</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="isMotorized"
+                type="checkbox"
+                checked={form.isMotorized}
+                onChange={(e) => setForm((p) => ({ ...p, isMotorized: e.target.checked }))}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <label htmlFor="isMotorized" className="text-sm">Motorisiert</label>
+            </div>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={onSubmit}>Speichern</Button>
+          <Button onClick={onSubmit} disabled={!form.model || !form.registration}>
+            Speichern
+          </Button>
         </div>
       </div>
     </div>
@@ -110,6 +132,7 @@ export default function AirplaneForm() {
 }
 
 export function EditAirplaneButton({ aircraft }: { aircraft: AircraftWithId }) {
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AirplaneFormData>({
     model: aircraft.model,
@@ -117,6 +140,7 @@ export function EditAirplaneButton({ aircraft }: { aircraft: AircraftWithId }) {
     yearBuilt: aircraft.yearBuilt,
     isTwoSeater: aircraft.isTwoSeater,
     isMotorized: aircraft.isMotorized,
+    initialHours: aircraft.initialHours,
   });
 
   async function handleSubmit() {
@@ -125,9 +149,13 @@ export function EditAirplaneButton({ aircraft }: { aircraft: AircraftWithId }) {
   }
 
   async function handleDelete() {
-    if (confirm(`${aircraft.registration} (${aircraft.model}) wirklich löschen?`)) {
-      await deleteAirplane(aircraft.id);
-    }
+    const ok = await confirm({
+      title: "Flugzeug löschen?",
+      message: `${aircraft.registration} (${aircraft.model}) wird dauerhaft entfernt. Alle zugehörigen Flugeinträge bleiben erhalten.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (ok) await deleteAirplane(aircraft.id);
   }
 
   return (

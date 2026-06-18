@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fullAuth } from "@/auth";
-
-const PILOT_FUNCTION_LABELS: Record<string, string> = {
-  PIC_SOLO: "PIC Alleinflug",
-  PIC_WITH_COPILOT: "PIC mit Begleitung",
-  DUAL_STUDENT: "Doppelsitzer Schüler",
-  DUAL_INSTRUCTOR: "Doppelsitzer Lehrer",
-  SOLO_STUDENT: "Alleinflug Schüler",
-};
+import { PILOT_FUNCTION_LABEL } from "@/lib/flight-utils";
 
 function esc(value: string | null | undefined): string {
   const s = value ?? "";
@@ -58,7 +51,7 @@ export async function GET() {
     return [
       formatDate(f.startTime),
       esc(pilot),
-      PILOT_FUNCTION_LABELS[f.pilotFunction ?? ""] ?? f.pilotFunction ?? "",
+      PILOT_FUNCTION_LABEL[f.pilotFunction ?? ""] ?? f.pilotFunction ?? "",
       esc(f.aircraft.model),
       f.aircraft.registration,
       f.launchType ?? "",
